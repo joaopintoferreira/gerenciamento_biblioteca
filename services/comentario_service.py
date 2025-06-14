@@ -86,7 +86,35 @@ class ComentarioService:
             return False
         finally:
             cursor.close()
+            
+    def listar_comentarios_livro(self, id_livro):
+        """Lista todos os comentários de um livro específico."""
+        cursor = self.conn.cursor()
+        try:
+            # Consulta SQL ajustada para usar o nome correto da tabela
+            cursor.execute("""
+                SELECT c.Id_Comentario, u.Nome, c.Texto, c.Data_Comentario
+                FROM Comentario c
+                JOIN Usuario u ON c.Id_Usuario = u.Id_Usuario
+                WHERE c.Id_Livro = %s
+                ORDER BY c.Data_Comentario DESC
+            """, (id_livro,))
 
+            comentarios = cursor.fetchall()
+
+            if not comentarios:
+                print("Nenhum comentário encontrado para este livro.")
+                return
+
+            print(f"\nComentários para o Livro ID {id_livro}:")
+            for comentario in comentarios:
+                print(f"ID Comentário: {comentario[0]}, Usuário: {comentario[1]}, Data: {comentario[3]}")
+                print(f"Comentário: {comentario[2]}\n")
+
+        except Exception as e:
+            print(f"Erro ao listar comentários: {e}")
+        finally:
+            cursor.close()
     '''
     def adicionar_resenha(self, id_usuario, id_livro, resenha):
         cursor = self.conn.cursor()

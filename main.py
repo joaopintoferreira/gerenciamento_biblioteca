@@ -338,24 +338,30 @@ class BibliotecaApp:
                 break
             else:
                 print("❌ Opção inválida!")
-
+   
     def menu_livros(self):
         while True:
             print("\n📚 GERENCIAR LIVROS")
             print("1. Adicionar Livro")
-            print("2. Atualizar Livro")
-            print("3. Remover Livro")
-            print("4. Listar Livros")
-            print("5. Buscar Livro por ID")
-            print("6. Voltar ao menu principal")
+            print("2. Atualizar Informações do Livro")
+            print("3. Atualizar Status do Livro")
+            print("4. Atualizar Quantidade de Exemplares")
+            print("5. Remover Livro")
+            print("6. Listar Livros")
+            print("7. Buscar Livro por ID")
+            print("8. Voltar ao menu principal")
+
             opcao = input("Escolha uma opção: ").strip()
 
             if opcao == '1':
                 titulo = input("Título do livro: ")
+                status = input("Status do livro (disponível, emprestado, reservado): ")
                 ano_publicacao = int(input("Ano de publicação: "))
                 id_editora = int(input("ID da editora: "))
                 id_categoria = int(input("ID da categoria: "))
-                self.livro_service.adicionar_livro(titulo, ano_publicacao, id_editora, id_categoria)
+                quantidade_exemplares = int(input("Quantidade de exemplares: "))
+                self.livro_service.adicionar_livro(titulo, status, ano_publicacao, id_editora, id_categoria, quantidade_exemplares)
+
             elif opcao == '2':
                 id_livro = int(input("ID do livro a ser atualizado: "))
                 titulo = input("Novo título (deixe em branco para não alterar): ")
@@ -367,18 +373,40 @@ class BibliotecaApp:
                 id_categoria = input("Novo ID da categoria (deixe em branco para não alterar): ")
                 id_categoria = int(id_categoria) if id_categoria else None
                 self.livro_service.atualizar_livro(id_livro, titulo, ano_publicacao, id_editora, id_categoria)
+
             elif opcao == '3':
+                id_livro = int(input("ID do livro a ter o status atualizado: "))
+                status = input("Novo status (disponível, emprestado, reservado): ")
+                self.livro_service.atualizar_status_livro(id_livro, status)
+
+            elif opcao == '4':
+                id_livro = int(input("ID do livro a ter a quantidade de exemplares atualizada: "))
+                quantidade_exemplares = int(input("Nova quantidade de exemplares: "))
+                self.livro_service.atualizar_quantidade_exemplares(id_livro, quantidade_exemplares)
+
+            elif opcao == '5':
                 id_livro = int(input("ID do livro a ser removido: "))
                 self.livro_service.remover_livro(id_livro)
-            elif opcao == '4':
-                self.livro_service.listar_livros()
-            elif opcao == '5':
-                id_livro = int(input("ID do livro: "))
-                self.livro_service.buscar_livro_por_id(id_livro)
+
             elif opcao == '6':
+                livros = self.livro_service.listar_livros()
+                if livros:
+                    print("\n=== LISTA DE LIVROS ===")
+                    for livro in livros:
+                        print(f"ID: {livro[0]}, Título: {livro[1]}, Status: {livro[2]}, Ano: {livro[3]}, Editora ID: {livro[4]}, Categoria ID: {livro[5]}, Quantidade de Exemplares: {livro[6]}")
+
+            elif opcao == '7':
+                id_livro = int(input("ID do livro: "))
+                livro = self.livro_service.buscar_livro_por_id(id_livro)
+                if livro:
+                    print(f"ID: {livro[0]}, Título: {livro[1]}, Status: {livro[2]}, Ano: {livro[3]}, Editora ID: {livro[4]}, Categoria ID: {livro[5]}, Quantidade de Exemplares: {livro[6]}")
+
+            elif opcao == '8':
                 break
+
             else:
-                print("❌ Opção inválida!")
+                print("❌ Opção inválida! Por favor, escolha uma opção válida.")
+
     def menu_usuarios(self):
         while True:
             print("\n👤 GERENCIAR USUÁRIOS")

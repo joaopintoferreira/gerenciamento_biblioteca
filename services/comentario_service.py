@@ -6,53 +6,12 @@ from datetime import datetime
 class ComentarioService:
     def __init__(self, conn):
         self.conn = conn
-    '''
     def adicionar_comentario(self, id_usuario, id_livro, texto):
         cursor = self.conn.cursor()
-        
         try:
             # Verificar se o usuário já leu o livro
             cursor.execute("""
-                SELECT COUNT(*) FROM Emprestimo 
-                WHERE Id_Usuario = %s AND Id_Livro = %s AND Devolvido = TRUE
-            """, (id_usuario, id_livro))
-            
-            if cursor.fetchone()[0] == 0:
-                print("Você precisa ter lido o livro para comentar.")
-                return False
-            
-            # Adicionar comentário
-            cursor.execute("""
-                INSERT INTO Comentario (Id_Usuario, Id_Livro, Texto)
-                VALUES (%s, %s, %s)
-            """, (id_usuario, id_livro, texto))
-             # Adicionar pontos ao usuário por comentário
-            pontos_por_comentario = 3
-            data_comentario = datetime.now().date()
-            cursor.execute("""
-                INSERT INTO Pontuacao (Id_Usuario, Motivo, Pontos, Data_Pontuacao)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (Id_Usuario)
-                DO UPDATE SET Pontos = Pontuacao.Pontos + EXCLUDED.Pontos
-            """, (id_usuario, 'Comentário adicionado', pontos_por_comentario, data_comentario))
-            self.conn.commit()
-            print("Comentário adicionado com sucesso!")
-            return True
-            
-        except Exception as e:
-            print(f"Erro ao adicionar comentário: {e}")
-            self.conn.rollback()
-            return False
-        finally:
-            cursor.close()
-    '''
-    def adicionar_comentario(self, id_usuario, id_livro, texto):
-        cursor = self.conn.cursor()
-        
-        try:
-            # Verificar se o usuário já leu o livro
-            cursor.execute("""
-                SELECT 1 FROM Emprestimo 
+                SELECT 1 FROM Emprestimo
                 WHERE Id_Usuario = %s AND Id_Livro = %s AND Devolvido = TRUE
             """, (id_usuario, id_livro))
             
@@ -66,15 +25,7 @@ class ComentarioService:
                 VALUES (%s, %s, %s)
             """, (id_usuario, id_livro, texto))
             
-            # Adicionar pontos ao usuário por comentário
-            pontos_por_comentario = 3
-            data_comentario = datetime.now().date()
-            cursor.execute("""
-                INSERT INTO Pontuacao (Id_Usuario, Motivo, Pontos, Data_Pontuacao)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (Id_Usuario)
-                DO UPDATE SET Pontos = Pontuacao.Pontos + EXCLUDED.Pontos
-            """, (id_usuario, 'Comentário adicionado', pontos_por_comentario, data_comentario))
+            # Deixe apenas o PontuacaoService cuidar dos pontos
             
             self.conn.commit()
             print("Comentário adicionado com sucesso!")
@@ -86,7 +37,7 @@ class ComentarioService:
             return False
         finally:
             cursor.close()
-            
+    
     def listar_comentarios_livro(self, id_livro):
         """Lista todos os comentários de um livro específico."""
         cursor = self.conn.cursor()
@@ -115,55 +66,13 @@ class ComentarioService:
             print(f"Erro ao listar comentários: {e}")
         finally:
             cursor.close()
-    '''
+
     def adicionar_resenha(self, id_usuario, id_livro, resenha):
         cursor = self.conn.cursor()
-        
         try:
             # Verificar se o usuário já leu o livro
             cursor.execute("""
-                SELECT COUNT(*) FROM Emprestimo 
-                WHERE Id_Usuario = %s AND Id_Livro = %s AND Devolvido = TRUE
-            """, (id_usuario, id_livro))
-            
-            if cursor.fetchone()[0] == 0:
-                print("Você precisa ter lido o livro para escrever uma resenha.")
-                return False
-            
-            # Adicionar ou atualizar resenha
-            cursor.execute("""
-                INSERT INTO Resenha (Id_Usuario, Id_Livro, Resenha)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (Id_Usuario, Id_Livro) 
-                DO UPDATE SET Resenha = EXCLUDED.Resenha
-            """, (id_usuario, id_livro, resenha))
-            # Adicionar pontos ao usuário por resenha
-            pontos_por_resenha = 15
-            data_resenha = datetime.now().date()
-            cursor.execute("""
-                INSERT INTO Pontuacao (Id_Usuario, Motivo, Pontos, Data_Pontuacao)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (Id_Usuario)
-                DO UPDATE SET Pontos = Pontuacao.Pontos + EXCLUDED.Pontos
-            """, (id_usuario, 'Resenha escrita', pontos_por_resenha, data_resenha))
-            self.conn.commit()
-            print("Resenha salva com sucesso!")
-            return True
-            
-        except Exception as e:
-            print(f"Erro ao salvar resenha: {e}")
-            self.conn.rollback()
-            return False
-        finally:
-            cursor.close()
-    '''
-    def adicionar_resenha(self, id_usuario, id_livro, resenha):
-        cursor = self.conn.cursor()
-        
-        try:
-            # Verificar se o usuário já leu o livro
-            cursor.execute("""
-                SELECT 1 FROM Emprestimo 
+                SELECT 1 FROM Emprestimo
                 WHERE Id_Usuario = %s AND Id_Livro = %s AND Devolvido = TRUE
             """, (id_usuario, id_livro))
             
@@ -171,35 +80,36 @@ class ComentarioService:
                 print("Você precisa ter lido o livro para escrever uma resenha.")
                 return False
             
+            # Verificar se já existe resenha (para não duplicar pontos)
+            cursor.execute("""
+                SELECT 1 FROM Resenha
+                WHERE Id_Usuario = %s AND Id_Livro = %s
+            """, (id_usuario, id_livro))
+            
+            ja_existe_resenha = cursor.fetchone() is not None
+            
             # Adicionar ou atualizar resenha
             cursor.execute("""
                 INSERT INTO Resenha (Id_Usuario, Id_Livro, Resenha)
                 VALUES (%s, %s, %s)
-                ON CONFLICT (Id_Usuario, Id_Livro) 
+                ON CONFLICT (Id_Usuario, Id_Livro)
                 DO UPDATE SET Resenha = EXCLUDED.Resenha
             """, (id_usuario, id_livro, resenha))
-            
-            # Adicionar pontos ao usuário por resenha
-            pontos_por_resenha = 15
-            data_resenha = datetime.now().date()
-            cursor.execute("""
-                INSERT INTO Pontuacao (Id_Usuario, Motivo, Pontos, Data_Pontuacao)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (Id_Usuario)
-                DO UPDATE SET Pontos = Pontuacao.Pontos + EXCLUDED.Pontos
-            """, (id_usuario, 'Resenha escrita', pontos_por_resenha, data_resenha))
+            # Deixe apenas o PontuacaoService cuidar dos pontos
             
             self.conn.commit()
             print("Resenha salva com sucesso!")
-            return True
+            
+            # Retornar se é uma resenha nova (para saber se deve dar pontos)
+            return {'sucesso': True, 'nova_resenha': not ja_existe_resenha}
             
         except Exception as e:
             print(f"Erro ao salvar resenha: {e}")
             self.conn.rollback()
-            return False
+            return {'sucesso': False, 'nova_resenha': False}
         finally:
             cursor.close()
-        
+            
     def listar_resenhas_livro(self, id_livro):
         cursor = self.conn.cursor()
         try:

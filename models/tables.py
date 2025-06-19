@@ -6,7 +6,6 @@ class BibliotecaTables:
     def __init__(self):
         self.tables = {
             # Definições das tabelas 
-
             'categoria': """CREATE TABLE IF NOT EXISTS Categoria (
                 Id_Categoria SERIAL PRIMARY KEY,
                 Nome VARCHAR(100) NOT NULL,
@@ -25,10 +24,9 @@ class BibliotecaTables:
                 Status VARCHAR(10) DEFAULT 'ativo',
                 Id_Categoria INTEGER REFERENCES Categoria(Id_Categoria)
             )""",
-            
             'pontuacao': """CREATE TABLE IF NOT EXISTS Pontuacao (
                 Id_Pontuacao SERIAL PRIMARY KEY,
-                Id_Usuario INTEGER REFERENCES Usuario(Id_Usuario) UNIQUE,
+                Id_Usuario INTEGER REFERENCES Usuario(Id_Usuario) ,
                 Motivo TEXT,
                 Pontos INTEGER,
                 Data_Pontuacao DATE
@@ -162,8 +160,9 @@ class BibliotecaTables:
                 ('Sofia Pereira', '78901234567', '48933221100', 'sofia.pereira@email.com', 'Pós-Graduado', 'ativo', 7),
                 ('Diego Martins', '89012345678', '48922110099', 'diego.martins@email.com', 'Senior', 'inativo', 8),
                 ('Juliana Rocha', '90123456789', '48911009988', 'juliana.rocha@email.com', 'Premium', 'ativo', 9),
-                ('Roberto Alves', '01234567890', '48900998877', 'roberto.alves@email.com', 'VIP', 'ativo', 10);""",
-
+                ('Roberto Alves', '01234567890', '48900998877', 'roberto.alves@email.com', 'VIP', 'ativo', 10),
+                ('João Pinto Ferreira', '11432153115', '48988085262', 'jocifer@gmail.com', 'Visitante', 'ativo', 5);""",
+            
             'pontuacao': """INSERT INTO Pontuacao (Id_Usuario, Motivo, Pontos, Data_Pontuacao) VALUES
                 (1, 'Empréstimo realizado', 10, '2024-01-15'),
                 (2, 'Devolução antecipada', 15, '2024-01-20'),
@@ -174,19 +173,22 @@ class BibliotecaTables:
                 (7, 'Comentário útil', 8, '2024-02-15'),
                 (8, 'Indicação de novo usuário', 30, '2024-02-20'),
                 (9, 'Uso frequente', 18, '2024-02-25'),
-                (10, 'Feedback positivo', 22, '2024-03-01');""",
+                (10, 'Feedback positivo', 22, '2024-03-01'),
+                (11, 'Recomendação de livro', 10, '2024-03-05');""",
+            
 
             'ranking': """INSERT INTO Ranking (Id_Usuario, Categoria, Pontos, Periodo, Data) VALUES
-                (1, 'Estudante', 45, 'Janeiro 2024', '2024-01-31'),
-                (2, 'Professor', 52, 'Janeiro 2024', '2024-01-31'),
+                (1, 'Estudante', 45, 'Janeiro 2025', '2025-01-31'),
+                (2, 'Professor', 52, 'Janeiro 2025', '2025-01-31'),
                 (3, 'Funcionário', 38, 'Janeiro 2024', '2024-01-31'),
-                (4, 'Estudante', 25, 'Fevereiro 2024', '2024-02-28'),
+                (4, 'Estudante', 25, 'Fevereiro 2025', '2025-02-28'),
                 (5, 'Pesquisador', 30, 'Fevereiro 2024', '2024-02-28'),
-                (6, 'Graduado', 95, 'Q1 2024', '2024-03-31'),
-                (7, 'Pós-Graduado', 88, 'Q1 2024', '2024-03-31'),
-                (8, 'Senior', 180, '2023', '2023-12-31'),
-                (9, 'Premium', 220, '2023', '2023-12-31'),
-                (10, 'VIP', 67, 'Fevereiro 2024', '2024-02-29');""",
+                (6, 'Graduado', 95, 'Marco 2024', '2024-03-31'),
+                (7, 'Pós-Graduado', 88, 'Marco 2024', '2024-03-31'),
+                (8, 'Senior', 180, 'Dezembro 2023', '2023-12-31'),
+                (9, 'Premium', 220, 'Dezembro 2023', '2023-12-31'),
+                (10, 'VIP', 90, 'Fevereiro 2024', '2024-02-29'),
+                (11, 'Visitante', 15, 'Janeiro 2024', '2024-01-31');""",
 
             'editora': """INSERT INTO Editora (Nome, Data_Edicao) VALUES
                 ('Companhia das Letras', '1986-03-15'),
@@ -214,7 +216,7 @@ class BibliotecaTables:
 
             'livro': """INSERT INTO Livro (Titulo, Status, Ano_Publicacao, Id_Editora, Id_Categoria,Quantidade_Exemplares) VALUES
                 ('Dom Casmurro', 'disponível', 1899, 1, 1, 5),
-                ('A Hora da Estrela', 'emprestado', 1977, 2, 1, 5),
+                ('A Hora da Estrela', 'emprestado', 1977, 2, 10, 5),
                 ('Gabriela, Cravo e Canela', 'disponível', 1958, 3, 2, 10),
                 ('Vidas Secas', 'disponível', 1938, 4, 1, 3),
                 ('O Evangelho Segundo Jesus Cristo', 'reservado', 1991, 5, 2, 4),
@@ -282,7 +284,8 @@ class BibliotecaTables:
                 (7, 8, '2024-02-10', '2024-03-12', NULL, FALSE, 0.00, 'ativa'),
                 (8, 9, '2024-02-15', '2024-03-30', '2024-04-05', TRUE, 12.00, 'Finalizado'),
                 (9, 10, '2024-02-20', '2024-04-20', NULL, FALSE, 0.00, 'ativa'),
-                (10, 1, '2024-02-25', '2024-03-11', NULL, FALSE, 15.00, 'Em atraso');""",
+                (10, 1, '2024-02-25', '2024-03-11', NULL, FALSE, 15.00, 'Em atraso'),
+                (11, 5, '2024-03-01', '2024-03-15', NULL, FALSE, 0.00, 'ativa');""",
 
             'reserva': """INSERT INTO Reserva (Id_Usuario, Id_Livro, Data, Status) VALUES
                 (1, 5, '2024-01-12', 'ativo'),
@@ -294,7 +297,8 @@ class BibliotecaTables:
                 (7, 9, '2024-02-12', 'ativo'),
                 (8, 4, '2024-02-18', 'cancelado'),
                 (9, 6, '2024-02-22', 'ativo'),
-                (10, 10, '2024-02-28', 'ativo');""",
+                (10, 10, '2024-02-28', 'ativo'),
+                (11, 1, '2024-03-05', 'ativo');""",
 
             'comentario': """INSERT INTO Comentario (Id_Usuario, Id_Livro, Texto, Data_Comentario) VALUES
                 (1, 1, 'Ótimo livro!', '2024-01-26'),
@@ -306,7 +310,8 @@ class BibliotecaTables:
                 (7, 7, 'Excelente narrativa.', '2024-02-25'),
                 (8, 8, 'Livro envolvente.', '2024-03-01'),
                 (9, 9, 'Leitura inspiradora.', '2024-03-05'),
-                (10, 10, 'Muito bom!', '2024-03-10');""",
+                (10, 10, 'Muito bom!', '2024-03-10'),
+                (11, 1, 'Muito interessante.', '2024-03-15');""",
 
             'resenha': """INSERT INTO Resenha (Id_Usuario, Id_Livro, Resenha, Curtidas) VALUES
                 (1, 1, 'Dom Casmurro é um clássico da literatura brasileira.', 25),
@@ -318,7 +323,8 @@ class BibliotecaTables:
                 (7, 7, 'A Casa dos Espíritos mistura política e magia de forma magistral.', 28),
                 (8, 8, 'A Festa do Bode é um thriller político fascinante.', 19),
                 (9, 9, 'O Alquimista é uma fábula moderna sobre seguir os sonhos.', 67),
-                (10, 10, 'As Meninas é um retrato fino da juventude burguesa.', 31);""",
+                (10, 10, 'As Meninas é um retrato fino da juventude burguesa.', 31),
+                (11, 1, 'Dom Casmurro é uma obra que explora a dúvida e a traição de forma magistral.', 20);""",
 
             'palavra_chave': """INSERT INTO Palavra_Chave (Palavra) VALUES
                 ('Romance'),
@@ -344,10 +350,10 @@ class BibliotecaTables:
                 (9, 5), (9, 9), (9, 1),
                 (10, 2), (10, 9), (10, 6);"""
         }
-
+        
         self.drop_order = [
             'livro_palavrachave', 'palavra_chave', 'resenha', 'comentario',
             'reserva', 'emprestimo', 'livro_restaurado', 'restaurador',
             'funcionario', 'co_autor', 'autor', 'livro', 'editora',
-            'ranking', 'pontuacao', 'usuario', 'categoria'
+            'ranking','pontuacao', 'usuario', 'categoria'
         ]

@@ -1,24 +1,28 @@
 class LivroService:
     def __init__(self, conn):
         self.conn = conn
-    
-    def adicionar_livro(self, titulo, status, ano_publicacao, id_editora, id_categoria, quantidade_exemplares):
+    def adicionar_livro(self, titulo, ano_publicacao, id_editora, id_categoria, quantidade_exemplares):
         cursor = self.conn.cursor()
         try:
+            # Status inicial sempre será 'disponível' quando há exemplares
+            status_inicial = 'disponível' if quantidade_exemplares > 0 else 'indisponível'
+            
             cursor.execute("""
                 INSERT INTO Livro (Titulo, Status, Ano_Publicacao, Id_Editora, Id_Categoria, Quantidade_Exemplares)
                 VALUES (%s, %s, %s, %s, %s, %s)
-            """, (titulo, status, ano_publicacao, id_editora, id_categoria, quantidade_exemplares))
+            """, (titulo, status_inicial, ano_publicacao, id_editora, id_categoria, quantidade_exemplares))
+            
             self.conn.commit()
-            print("Livro adicionado com sucesso!")
+            print(f"Livro adicionado com sucesso! Status: {status_inicial}")
             return True
+            
         except Exception as e:
             print(f"Erro ao adicionar livro: {e}")
             self.conn.rollback()
             return False
         finally:
             cursor.close()
-    
+
     def atualizar_livro(self, id_livro, titulo=None, status=None, ano_publicacao=None, id_editora=None, id_categoria=None, quantidade_exemplares=None):
         cursor = self.conn.cursor()
         try:
@@ -115,6 +119,7 @@ class LivroService:
             cursor.execute("""
                 SELECT Id_Livro, Titulo, Status, Ano_Publicacao, Id_Editora, Id_Categoria, Quantidade_Exemplares
                 FROM Livro
+                ORDER BY Id_Livro ASC
             """)
             livros = cursor.fetchall()
             return livros

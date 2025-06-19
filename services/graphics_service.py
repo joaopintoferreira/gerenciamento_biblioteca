@@ -111,11 +111,12 @@ class GraphicsService:
         plt.tight_layout()
         plt.show()
 
-
+    
     def grafico_ranking_usuarios(self):
         cursor = self.conn.cursor()
         
         cursor.execute("""
+            
             SELECT u.Nome, COUNT(e.Id_Emprestimo) as Total_Emprestimos,
                    COALESCE(SUM(p.Pontos), 0) as Total_Pontos
             FROM Usuario u
@@ -165,139 +166,7 @@ class GraphicsService:
         
         plt.tight_layout()
         plt.show()
-    '''
-    def grafico_pontuacao_usuarios(self):
-        cursor = self.conn.cursor()
-        
-        cursor.execute("""
-            SELECT u.Nome, p.Data_Pontuacao, SUM(p.Pontos) as Pontos_Dia
-            FROM Usuario u
-            JOIN Pontuacao p ON u.Id_Usuario = p.Id_Usuario
-            GROUP BY u.Id_Usuario, u.Nome, p.Data_Pontuacao
-            ORDER BY p.Data_Pontuacao
-        """)
-        
-        data = cursor.fetchall()
-        cursor.close()
-        
-        if not data:
-            print("Nenhum dado de pontuação encontrado")
-            return
-        
-        # Agrupar dados por usuário
-        usuarios = {}
-        for nome, data_pont, pontos in data:
-            if nome not in usuarios:
-                usuarios[nome] = {'datas': [], 'pontos': []}
-            usuarios[nome]['datas'].append(data_pont)
-            usuarios[nome]['pontos'].append(pontos)
-        
-        plt.figure(figsize=(12, 8))
-        colors = ['b', 'r', 'g', 'orange', 'purple', 'brown', 'pink', 'gray']
-        
-        for i, (nome, dados) in enumerate(usuarios.items()):
-            plt.plot(dados['datas'], dados['pontos'], marker='o', 
-                    color=colors[i % len(colors)], label=nome, linewidth=2, markersize=6)
-        
-        plt.title('Evolução da Pontuação dos Usuários', fontsize=14, fontweight='bold', pad=20)
-        plt.xlabel('Data', fontsize=12)
-        plt.ylabel('Pontos', fontsize=12)
-        plt.legend(title='Usuários', bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.grid(True, alpha=0.3)
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.show()
-    '''
-    '''
-    def grafico_pontuacao_usuarios(self):
-        cursor = self.conn.cursor()
-
-        
-        cursor.execute("""
-            SELECT u.Nome, SUM(p.Pontos) as Total_Pontos
-            FROM Usuario u
-            JOIN Pontuacao p ON u.Id_Usuario = p.Id_Usuario
-            GROUP BY u.Id_Usuario, u.Nome
-        """)
-
-        data = cursor.fetchall()
-        cursor.close()
-
-        if not data:
-            print("Nenhum dado de pontuação encontrado")
-            return
-
-        
-        nomes = [row[0] for row in data]
-        pontos = [row[1] for row in data]
-
-        
-        plt.figure(figsize=(8, 8))
-        plt.pie(pontos, labels=nomes, autopct='%1.1f%%', startangle=140)
-        plt.title('Distribuição Total de Pontuação dos Usuários', fontsize=14, fontweight='bold')
-        plt.axis('equal')  
-
-        plt.show()
-    '''
-    '''
-    def grafico_pontuacao_usuarios(self):
-        cursor = self.conn.cursor()
-
-        cursor.execute("""
-            SELECT u.Nome, p.Data_Pontuacao, SUM(p.Pontos) as Pontos_Dia
-            FROM Usuario u
-            JOIN Pontuacao p ON u.Id_Usuario = p.Id_Usuario
-            GROUP BY u.Id_Usuario, u.Nome, p.Data_Pontuacao
-            ORDER BY u.Nome, p.Data_Pontuacao
-        """)
-
-        data = cursor.fetchall()
-        cursor.close()
-
-        if not data:
-            print("Nenhum dado de pontuação encontrado")
-            return
-
-        # Organizar os dados
-        df = pd.DataFrame(data, columns=['Nome', 'Data', 'Pontos'])
-        df['Data'] = pd.to_datetime(df['Data'])
-        df.sort_values(['Nome', 'Data'], inplace=True)
-
-        # Pivot: eixo X = Nome do usuário, cada barra dividida por Data
-        pivot_df = df.pivot_table(index='Nome', columns='Data', values='Pontos', aggfunc='sum', fill_value=0)
-
-        nomes = pivot_df.index
-        datas = pivot_df.columns
-        cores = ['b', 'r', 'g', 'orange', 'purple', 'brown', 'pink', 'gray']
-
-        # Calcular total por usuário
-        total_por_usuario = pivot_df.sum(axis=1)
-
-        plt.figure(figsize=(14, 8))
-
-        bottom = np.zeros(len(nomes))
-
-        # Barras empilhadas (cada data uma parte da barra)
-        for i, data_coluna in enumerate(datas):
-            plt.bar(nomes, pivot_df[data_coluna], bottom=bottom, color=cores[i % len(cores)], label=data_coluna.strftime('%d/%m'))
-            bottom += pivot_df[data_coluna]
-
-        # Linha de total
-        plt.plot(nomes, total_por_usuario, color='green', marker='o', linewidth=2, label='Total')
-
-        # Rótulo do total
-        for x, y in zip(nomes, total_por_usuario):
-            plt.text(x, y + 2, f'{y:.0f}', ha='center', fontsize=9, fontweight='bold', color='green')
-
-        plt.title('Pontuação Total por Usuário', fontsize=16, fontweight='bold')
-        plt.xlabel('Usuários', fontsize=12)
-        plt.ylabel('Pontos', fontsize=12)
-        plt.xticks(rotation=45)
-        plt.legend(title='Datas')
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
-    '''
+    
     def grafico_pontuacao_usuarios(self):
         cursor = self.conn.cursor()
 
@@ -369,3 +238,4 @@ class GraphicsService:
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         plt.show()
+    

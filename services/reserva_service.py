@@ -2,7 +2,6 @@
 # services/reserva_service.py
 # Serviço para gerenciar reservas
 # =============================================================================
-
 from datetime import datetime
 
 class ReservaService:
@@ -13,16 +12,33 @@ class ReservaService:
         cursor = self.conn.cursor()
         
         try:
-            # Verificar se o livro existe e está emprestado
-            cursor.execute("SELECT Status FROM Livro WHERE Id_Livro = %s", (id_livro,))
-            livro_status = cursor.fetchone()
+            # Verificar se o livro existe e obter informações sobre exemplares
+            cursor.execute("""
+                SELECT Status, Quantidade_Exemplares 
+                FROM Livro 
+                WHERE Id_Livro = %s
+            """, (id_livro,))
+            livro_info = cursor.fetchone()
             
-            if not livro_status:
+            if not livro_info:
                 print("Livro não encontrado.")
                 return False
             
-            if livro_status[0] == 'disponível':
-                print("Livro está disponível. Realize um empréstimo direto.")
+            status_atual, quantidade_total = livro_info
+            
+            # Contar quantos exemplares estão emprestados
+            cursor.execute("""
+                SELECT COUNT(*) FROM Emprestimo 
+                WHERE Id_Livro = %s AND Status = 'ativo'
+            """, (id_livro,))
+            exemplares_emprestados = cursor.fetchone()[0]
+            
+            # Calcular exemplares disponíveis
+            exemplares_disponiveis = quantidade_total - exemplares_emprestados
+            
+            # Se ainda há exemplares disponíveis, não pode fazer reserva
+            if exemplares_disponiveis > 0:
+                print(f"Livro possui {exemplares_disponiveis} exemplar(es) disponível(is). Realize um empréstimo direto.")
                 return False
             
             # Verificar se usuário já tem reserva ativa para este livro
@@ -42,6 +58,14 @@ class ReservaService:
                 VALUES (%s, %s, %s, 'ativo')
             """, (id_usuario, id_livro, data_reserva))
             
+            # Atualizar status do livro para 'reservado' quando criar a primeira reserva
+            # e não há exemplares disponíveis
+            if exemplares_disponiveis == 0:
+                cursor.execute("""
+                    UPDATE Livro SET Status = 'reservado' 
+                    WHERE Id_Livro = %s
+                """, (id_livro,))
+            
             self.conn.commit()
             print("Reserva realizada com sucesso! Você será notificado quando o livro estiver disponível.")
             return True
@@ -57,17 +81,62 @@ class ReservaService:
         cursor = self.conn.cursor()
         
         try:
+            # Obter informações da reserva antes de cancelar
+            cursor.execute("""
+                SELECT Id_Livro FROM Reserva 
+                WHERE Id_Reserva = %s AND Status = 'ativo'
+            """, (id_reserva,))
+            reserva_info = cursor.fetchone()
+            
+            if not reserva_info:
+                print("Reserva não encontrada ou já cancelada.")
+                return False
+            
+            id_livro = reserva_info[0]
+            
+            # Cancelar a reserva
             cursor.execute("""
                 UPDATE Reserva SET Status = 'cancelado' 
                 WHERE Id_Reserva = %s AND Status = 'ativo'
             """, (id_reserva,))
             
-            if cursor.rowcount == 0:
-                print("Reserva não encontrada ou já cancelada.")
-                return False
+            # Verificar se ainda há outras reservas ativas para este livro
+            cursor.execute("""
+                SELECT COUNT(*) FROM Reserva 
+                WHERE Id_Livro = %s AND Status = 'ativo'
+            """, (id_livro,))
+            reservas_restantes = cursor.fetchone()[0]
+            
+            # Verificar exemplares disponíveis
+            cursor.execute("""
+                SELECT Quantidade_Exemplares FROM Livro 
+                WHERE Id_Livro = %s
+            """, (id_livro,))
+            quantidade_total = cursor.fetchone()[0]
+            
+            cursor.execute("""
+                SELECT COUNT(*) FROM Emprestimo 
+                WHERE Id_Livro = %s AND Status = 'ativo'
+            """, (id_livro,))
+            exemplares_emprestados = cursor.fetchone()[0]
+            
+            exemplares_disponiveis = quantidade_total - exemplares_emprestados
+            
+            # Atualizar status do livro baseado na situação atual
+            if exemplares_disponiveis > 0:
+                novo_status = 'disponível'
+            elif reservas_restantes > 0:
+                novo_status = 'reservado'
+            else:
+                novo_status = 'emprestado'
+            
+            cursor.execute("""
+                UPDATE Livro SET Status = %s 
+                WHERE Id_Livro = %s
+            """, (novo_status, id_livro))
             
             self.conn.commit()
-            print("Reserva cancelada com sucesso.")
+            print(f"Reserva cancelada com sucesso. Status do livro atualizado para: {novo_status}")
             return True
             
         except Exception as e:
@@ -80,18 +149,64 @@ class ReservaService:
     def excluir_reserva(self, id_reserva):
         cursor = self.conn.cursor()
         try:
-            # Verificar se a reserva existe
-            cursor.execute("SELECT Id_Reserva FROM Reserva WHERE Id_Reserva = %s", (id_reserva,))
-            reserva = cursor.fetchone()
+            # Verificar se a reserva existe e obter informações
+            cursor.execute("""
+                SELECT Id_Livro, Status FROM Reserva 
+                WHERE Id_Reserva = %s
+            """, (id_reserva,))
+            reserva_info = cursor.fetchone()
 
-            if not reserva:
+            if not reserva_info:
                 print("Reserva não encontrada.")
                 return False
 
+            id_livro, status_reserva = reserva_info
+
             # Excluir a reserva
             cursor.execute("DELETE FROM Reserva WHERE Id_Reserva = %s", (id_reserva,))
+            
+            # Se a reserva excluída estava ativa, atualizar status do livro
+            if status_reserva == 'ativo':
+                # Verificar se ainda há outras reservas ativas
+                cursor.execute("""
+                    SELECT COUNT(*) FROM Reserva 
+                    WHERE Id_Livro = %s AND Status = 'ativo'
+                """, (id_livro,))
+                reservas_restantes = cursor.fetchone()[0]
+                
+                # Verificar exemplares disponíveis
+                cursor.execute("""
+                    SELECT Quantidade_Exemplares FROM Livro 
+                    WHERE Id_Livro = %s
+                """, (id_livro,))
+                quantidade_total = cursor.fetchone()[0]
+                
+                cursor.execute("""
+                    SELECT COUNT(*) FROM Emprestimo 
+                    WHERE Id_Livro = %s AND Status = 'ativo'
+                """, (id_livro,))
+                exemplares_emprestados = cursor.fetchone()[0]
+                
+                exemplares_disponiveis = quantidade_total - exemplares_emprestados
+                
+                # Definir novo status
+                if exemplares_disponiveis > 0:
+                    novo_status = 'disponível'
+                elif reservas_restantes > 0:
+                    novo_status = 'reservado'
+                else:
+                    novo_status = 'emprestado'
+                
+                cursor.execute("""
+                    UPDATE Livro SET Status = %s 
+                    WHERE Id_Livro = %s
+                """, (novo_status, id_livro))
+                
+                print(f"Reserva excluída com sucesso! Status do livro atualizado para: {novo_status}")
+            else:
+                print("Reserva excluída com sucesso!")
+            
             self.conn.commit()
-            print("Reserva excluída com sucesso!")
             return True
 
         except Exception as e:
@@ -126,3 +241,4 @@ class ReservaService:
             print(f"{status_emoji} {reserva[1]} - {reserva[2]} (Data: {reserva[3]}) - {reserva[4]}")
         
         return reservas
+   

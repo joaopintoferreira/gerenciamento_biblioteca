@@ -16,6 +16,8 @@ from services.livro_service import LivroService
 from services.usuario_service import UsuarioService
 from services.autor_service import AutorService
 from services.funcionario_service import FuncionarioService
+from services.restaurador_service import RestauradorService
+from services.co_autor_service import CoAutorService
 
 
 class BibliotecaApp:
@@ -33,6 +35,8 @@ class BibliotecaApp:
         self.usuario_service = None
         self.autor_service = None
         self.funcionario_service = None
+        self.restaurador_service = None
+        self.co_autor_service = None
 
     
     def conectar_banco(self):
@@ -48,6 +52,8 @@ class BibliotecaApp:
             self.usuario_service = UsuarioService(self.conn)
             self.autor_service = AutorService(self.conn)
             self.funcionario_service = FuncionarioService(self.conn)
+            self.restaurador_service = RestauradorService(self.conn)
+            self.co_autor_service = CoAutorService(self.conn)
 
             self.ia_service = IAService()
             return True
@@ -117,22 +123,75 @@ class BibliotecaApp:
             opcao = input("Escolha uma opção: ").strip()
             
             if opcao == '1':
-                id_usuario = int(input("ID do usuário: "))
-                id_livro = int(input("ID do livro: "))
-                if self.emprestimo_service.realizar_emprestimo(id_usuario, id_livro):
-                    self.pontuacao_service.adicionar_pontos(id_usuario, "Empréstimo realizado", 10)
+                try:
+                    id_usuario = int(input("ID do usuário: "))
+                    id_livro = int(input("ID do livro: "))
+        
+                    if self.emprestimo_service.realizar_emprestimo(id_usuario, id_livro):
+                        # Adicionar pontos usando o PontuacaoService
+                        self.pontuacao_service.processar_pontos_emprestimo(id_usuario)
+                        
+                except ValueError:
+                    print("❌ Por favor, insira números válidos!")
+                except Exception as e:
+                    print(f"❌ Erro ao realizar empréstimo: {e}")
+                    
             elif opcao == '2':
-                id_emprestimo = int(input("ID do empréstimo: "))
-                self.emprestimo_service.devolver_livro(id_emprestimo)
+                try:
+                    id_emprestimo = int(input("ID do empréstimo: "))
+                    
+                    # Primeiro, obter dados do empréstimo para pegar o ID do usuário
+                    cursor = self.emprestimo_service.conn.cursor()
+                    cursor.execute("""
+                        SELECT Id_Usuario, Data_Prevista_Devolucao 
+                        FROM Emprestimo 
+                        WHERE Id_Emprestimo = %s AND Devolvido = FALSE
+                    """, (id_emprestimo,))
+                    
+                    emprestimo_data = cursor.fetchone()
+                    cursor.close()
+                    
+                    if emprestimo_data:
+                        id_usuario = emprestimo_data[0]
+                        data_prevista = emprestimo_data[1]
+                        
+                        # Devolver o livro
+                        if self.emprestimo_service.devolver_livro(id_emprestimo):
+                            # Verificar se foi devolvido no prazo
+                            from datetime import datetime
+                            data_devolucao = datetime.now().date()
+                            
+                            if data_devolucao <= data_prevista:
+                                # Só adiciona pontos se devolveu no prazo
+                                self.pontuacao_service.processar_pontos_devolucao_prazo(id_usuario)
+                            else:
+                                print("📅 Livro devolvido com atraso - sem pontos por devolução no prazo")
+                    else:
+                        print("❌ Empréstimo não encontrado ou já devolvido!")
+                        
+                except ValueError:
+                    print("❌ Por favor, insira um número válido!")
+                except Exception as e:
+                    print(f"❌ Erro ao devolver livro: {e}")
+                    
             elif opcao == '3':
-                self.query_service.consulta_emprestimos_ativos()
+                try:
+                    self.query_service.consulta_emprestimos_ativos()
+                except Exception as e:
+                    print(f"❌ Erro ao listar empréstimos ativos: {e}")
+                    
             elif opcao == '4':
-                self.emprestimo_service.listar_livros_nao_devolvidos() 
+                try:
+                    self.emprestimo_service.listar_livros_nao_devolvidos()
+                except Exception as e:
+                    print(f"❌ Erro ao listar livros não devolvidos: {e}")
+                    
             elif opcao == '5':
                 break
+                
             else:
                 print("❌ Opção inválida!")
-    
+
     def menu_reservas(self):
         while True:
             print("\n📋 GERENCIAR RESERVAS")
@@ -175,34 +234,74 @@ class BibliotecaApp:
             opcao = input("Escolha uma opção: ").strip()
             
             if opcao == '1':
-                id_usuario = int(input("ID do usuário: "))
-                id_livro = int(input("ID do livro: "))
-                texto = input("Comentário: ")
-                if self.comentario_service.adicionar_comentario(id_usuario, id_livro, texto):
-                    #self.pontuacao_service.processar_pontos_comentario(id_usuario)
-                    self.pontuacao_service.adicionar_pontos(id_usuario, "Comentário adicionado", 3)
+                try:
+                    id_usuario = int(input("ID do usuário: "))
+                    id_livro = int(input("ID do livro: "))
+                    texto = input("Comentário: ")
+                    
+                    # Adicionar comentário e pontos apenas se for bem-sucedido
+                    if self.comentario_service.adicionar_comentario(id_usuario, id_livro, texto):
+                        self.pontuacao_service.processar_pontos_comentario(id_usuario)
+                        
+                except ValueError:
+                    print("❌ Por favor, insira números válidos!")
+                except Exception as e:
+                    print(f"❌ Erro ao adicionar comentário: {e}")
+                    
             elif opcao == '2':
-                id_usuario = int(input("ID do usuário: "))
-                id_livro = int(input("ID do livro: "))
-                resenha = input("Resenha: ")
-                if self.comentario_service.adicionar_resenha(id_usuario, id_livro, resenha):
-                    #self.pontuacao_service.processar_pontos_resenha(id_usuario)
-                    self.pontuacao_service.adicionar_pontos(id_usuario, "Resenha escrita", 15)
+                try:
+                    id_usuario = int(input("ID do usuário: "))
+                    id_livro = int(input("ID do livro: "))
+                    resenha = input("Resenha: ")
+                    
+                    # Adicionar resenha
+                    resultado = self.comentario_service.adicionar_resenha(id_usuario, id_livro, resenha)
+                    
+                    # Só dar pontos se for uma resenha nova (não atualização)
+                    if resultado.get('sucesso') and resultado.get('nova_resenha'):
+                        self.pontuacao_service.processar_pontos_resenha(id_usuario)
+                    elif resultado.get('sucesso') and not resultado.get('nova_resenha'):
+                        print("ℹ️  Resenha atualizada - sem pontos adicionais")
+                        
+                except ValueError:
+                    print("❌ Por favor, insira números válidos!")
+                except Exception as e:
+                    print(f"❌ Erro ao escrever resenha: {e}")
+                    
             elif opcao == '3':
-                id_livro = int(input("ID do livro: "))
-                self.comentario_service.listar_comentarios_livro(id_livro)
+                try:
+                    id_livro = int(input("ID do livro: "))
+                    self.comentario_service.listar_comentarios_livro(id_livro)
+                except ValueError:
+                    print("❌ Por favor, insira um número válido!")
+                except Exception as e:
+                    print(f"❌ Erro ao listar comentários: {e}")
+                    
             elif opcao == '4':
-                id_livro = int(input("ID do livro: "))
-                self.comentario_service.listar_resenhas_livro(id_livro)
+                try:
+                    id_livro = int(input("ID do livro: "))
+                    self.comentario_service.listar_resenhas_livro(id_livro)
+                except ValueError:
+                    print("❌ Por favor, insira um número válido!")
+                except Exception as e:
+                    print(f"❌ Erro ao listar resenhas: {e}")
+                    
             elif opcao == '5':
-                id_usuario = int(input("ID do usuário (autor da resenha): "))
-                id_livro = int(input("ID do livro: "))
-                self.comentario_service.curtir_resenha(id_usuario, id_livro)
+                try:
+                    id_usuario = int(input("ID do usuário (autor da resenha): "))
+                    id_livro = int(input("ID do livro: "))
+                    self.comentario_service.curtir_resenha(id_usuario, id_livro)
+                except ValueError:
+                    print("❌ Por favor, insira números válidos!")
+                except Exception as e:
+                    print(f"❌ Erro ao curtir resenha: {e}")
+                    
             elif opcao == '6':
                 break
+                
             else:
                 print("❌ Opção inválida!")
-    
+
     def menu_pontuacao(self):
         while True:
             print("\n🏆 SISTEMA DE PONTUAÇÃO")
@@ -286,26 +385,36 @@ class BibliotecaApp:
                 print("❌ Opção inválida!")
 
     def menu_ia(self):
+        print("\n🤖 Bem-vindo ao Assistente IA da Biblioteca!")
+        print("Você pode pedir recomendações ou sugestões de resenha a qualquer momento.")
+
         while True:
-            print("\n🤖 RECOMENDAÇÕES IA")
-            print("1. Recomendar livros")
-            print("2. Sugerir comentário/resenha")
-            print("3. Voltar ao menu principal")
+            print("\nO que você deseja fazer?")
+            print("1. 📚 Recomendar livros")
+            print("2. ✍️ Sugerir comentário/resenha")
+            print("3. 🚪 Sair")
+
             opcao = input("Escolha uma opção: ").strip()
 
             if opcao == '1':
-                id_usuario = int(input("ID do usuário: "))
+                id_usuario = int(input("Digite o ID do usuário: "))
                 recomendacao = self.ia_service.recomendar_livros(self.conn, id_usuario)
-                print(recomendacao)
+                print(f"\n🔎 Recomendação:\n{recomendacao}")
+
             elif opcao == '2':
-                id_usuario = int(input("ID do usuário: "))
-                id_livro = int(input("ID do livro: "))
+                id_usuario = int(input("Digite o ID do usuário: "))
+                id_livro = int(input("Digite o ID do livro: "))
                 sugestao = self.ia_service.sugerir_comentario_resenha(self.conn, id_usuario, id_livro)
-                print(sugestao)
+                print(f"\n📝 Sugestão de comentário/resenha:\n{sugestao}")
+
             elif opcao == '3':
+                print("👋 Encerrando o assistente IA. Até a próxima!")
                 break
+
             else:
-                print("❌ Opção inválida!")
+                print("❌ Opção inválida! Tente novamente.")
+
+
 
     def menu_sistema(self):
         while True:
@@ -507,7 +616,8 @@ class BibliotecaApp:
             elif opcao == '5':
                 break
             else:
-                print("❌ Opção inválida!")        
+                print("❌ Opção inválida!")    
+                    
 if __name__ == "__main__":
     app = BibliotecaApp()
     if app.conectar_banco():

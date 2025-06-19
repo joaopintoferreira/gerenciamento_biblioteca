@@ -7,11 +7,23 @@ from datetime import datetime, timedelta
 class EmprestimoService:
     def __init__(self, conn):
         self.conn = conn
-
     def realizar_emprestimo(self, id_usuario, id_livro):
         cursor = self.conn.cursor()
 
         try:
+            # ⭐ NOVA RESTRIÇÃO: Verificar se o usuário já tem empréstimo ativo do mesmo livro
+            cursor.execute("""
+                SELECT COUNT(*) FROM Emprestimo 
+                WHERE Id_Usuario = %s AND Id_Livro = %s AND Devolvido = FALSE
+            """, (id_usuario, id_livro))
+            
+            emprestimo_mesmo_livro = cursor.fetchone()[0]
+            
+            if emprestimo_mesmo_livro > 0:
+                print("❌ ERRO: Você já possui um empréstimo ativo deste livro!")
+                print("💡 Dica: Devolva o livro antes de emprestar novamente.")
+                return False
+
             # Verificar se o usuário tem multas pendentes
             cursor.execute("SELECT Multa FROM Emprestimo WHERE Id_Usuario = %s AND Multa > 0", (id_usuario,))
             if cursor.fetchone():
@@ -71,17 +83,8 @@ class EmprestimoService:
                 WHERE Id_Livro = %s
             """, (id_livro,))
 
-            # Adicionar pontos ao usuário
-            pontos_por_emprestimo = 10  # Defina a quantidade de pontos por empréstimo
-            cursor.execute("""
-                INSERT INTO Pontuacao (Id_Usuario, Pontos, Data_Pontuacao)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (Id_Usuario)
-                DO UPDATE SET Pontos = Pontuacao.Pontos + EXCLUDED.Pontos
-            """, (id_usuario, pontos_por_emprestimo, data_emprestimo))
-
             self.conn.commit()
-            print(f"Empréstimo realizado com sucesso! Data de devolução: {data_prevista}")
+            print(f"✅ Empréstimo realizado com sucesso! Data de devolução: {data_prevista}")
             return True
 
         except Exception as e:
@@ -90,9 +93,10 @@ class EmprestimoService:
             return False
         finally:
             cursor.close()
+            
     def devolver_livro(self, id_emprestimo):
         cursor = self.conn.cursor()
-        
+
         try:
             # Obter dados do empréstimo
             cursor.execute("""
@@ -102,63 +106,54 @@ class EmprestimoService:
                 JOIN Categoria c ON u.Id_Categoria = c.Id_Categoria
                 WHERE e.Id_Emprestimo = %s AND e.Devolvido = FALSE
             """, (id_emprestimo,))
-            
+
             emprestimo_data = cursor.fetchone()
             if not emprestimo_data:
                 print("Empréstimo não encontrado ou já devolvido")
                 return False
-            
+
             id_livro, data_prevista, id_usuario, valor_multa_dia = emprestimo_data
             data_devolucao = datetime.now().date()
-            
+
             # Calcular multa se houver atraso
             multa = 0
             if data_devolucao > data_prevista:
                 dias_atraso = (data_devolucao - data_prevista).days
                 multa = dias_atraso * float(valor_multa_dia)
-            
+
             # Atualizar empréstimo
             cursor.execute("""
-                UPDATE Emprestimo 
+                UPDATE Emprestimo
                 SET Data_Devolucao = %s, Devolvido = TRUE, Multa = %s, Status = 'Finalizado'
                 WHERE Id_Emprestimo = %s
             """, (data_devolucao, multa, id_emprestimo))
-            
+
             # Atualizar status do livro
             cursor.execute("UPDATE Livro SET Status = 'disponivel' WHERE Id_Livro = %s", (id_livro,))
 
-             # Atualizar quantidade de exemplares do livro
+            # Atualizar quantidade de exemplares do livro
             cursor.execute("""
                 UPDATE Livro
                 SET Quantidade_Exemplares = Quantidade_Exemplares + 1
                 WHERE Id_Livro = %s
             """, (id_livro,))
-            # Adicionar pontos ao usuário por devolução no prazo
-            pontos_por_devolucao = 5
-            data_devolucao = datetime.now().date()
-            cursor.execute("""
-                INSERT INTO Pontuacao (Id_Usuario, Motivo, Pontos, Data_Pontuacao)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (Id_Usuario)
-                DO UPDATE SET Pontos = Pontuacao.Pontos + EXCLUDED.Pontos
-            """, (id_usuario, 'Devolução no prazo', pontos_por_devolucao, data_devolucao))
-            
+
             self.conn.commit()
-            
+
             if multa > 0:
                 print(f"Livro devolvido com atraso. Multa: R$ {multa:.2f}")
             else:
                 print("Livro devolvido com sucesso!")
-            
+
             return True
-            
+
         except Exception as e:
             print(f"Erro ao devolver livro: {e}")
             self.conn.rollback()
             return False
         finally:
             cursor.close()
-            
+
     def listar_livros_nao_devolvidos(self):
         cursor = self.conn.cursor()
         try:
